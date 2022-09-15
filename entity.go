@@ -459,3 +459,52 @@ func (pus *PrepareUpdateStatement) execContext(ctx context.Context, ent Entity) 
 	}
 	return nil
 }
+
+// PrepareDeleteStatement is a prepared delete statement for entity
+type PrepareDeleteStatement struct {
+	md   *Metadata
+	stmt *sqlx.NamedStmt
+}
+
+// PrepareInsert returns a prepared insert statement for Entity
+func PrepareDelete(ctx context.Context, ent Entity, db DB) (*PrepareDeleteStatement, error) {
+	md, err := getMetadata(ent)
+	if err != nil {
+		return nil, fmt.Errorf("get metadata, %w", err)
+	}
+
+	query := getStatement(commandDelete, md, dbDriver(db))
+	stmt, err := db.PrepareNamedContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PrepareDeleteStatement{
+		md:   md,
+		stmt: stmt,
+	}, nil
+}
+
+// Close closes the prepared statement
+func (pds *PrepareDeleteStatement) Close() error {
+	return pds.stmt.Close()
+}
+
+// ExecContext executes a prepared insert statement using the Entity passed.
+func (pds *PrepareDeleteStatement) ExecContext(ctx context.Context, ent Entity) error {
+	ctx, cancel := context.WithTimeout(ctx, WriteTimeout)
+	defer cancel()
+
+	if err := pds.execContext(ctx, ent); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pds *PrepareDeleteStatement) execContext(ctx context.Context, ent Entity) error {
+	if _, err := pds.stmt.ExecContext(ctx, ent); err != nil {
+		return err
+	}
+	return nil
+}
